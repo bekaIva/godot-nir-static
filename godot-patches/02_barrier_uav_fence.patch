@@ -1,0 +1,23 @@
+diff --git a/godot-mesa/src/microsoft/compiler/nir_to_dxil.c b/godot-mesa/src/microsoft/compiler/nir_to_dxil.c
+--- a/godot-mesa/src/microsoft/compiler/nir_to_dxil.c
++++ b/godot-mesa/src/microsoft/compiler/nir_to_dxil.c
+@@ -3103,12 +3103,14 @@ emit_barrier_impl(struct ntd_context *ctx, nir_variable_mode modes, mesa_scope e
+ 
+    bool is_compute = ctx->mod.shader_kind == DXIL_COMPUTE_SHADER;
+ 
+-   if ((modes & (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image)) &&
+-       (mem_scope > SCOPE_WORKGROUP || !is_compute)) {
++   /* Only fence UAV memory when the barrier orders it. A compute barrier for
++    * shared memory only (GLSL barrier()) becomes HLSL's
++    * GroupMemoryBarrierWithGroupSync(): a UAV fence there is not needed and
++    * is expensive on some drivers (Intel) after typed UAV loads. */
++   if ((modes & (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image)) || !is_compute)
+       flags |= DXIL_BARRIER_MODE_UAV_FENCE_GLOBAL;
+-   } else {
+-      flags |= DXIL_BARRIER_MODE_UAV_FENCE_GLOBAL;
+-   }
++   else
++      flags |= DXIL_BARRIER_MODE_GROUPSHARED_MEM_FENCE;
+ 
+    if ((modes & nir_var_mem_shared) && is_compute)
+       flags |= DXIL_BARRIER_MODE_GROUPSHARED_MEM_FENCE;
