@@ -1,0 +1,24 @@
+diff --git a/godot-mesa/src/microsoft/compiler/dxil_signature.c b/godot-mesa/src/microsoft/compiler/dxil_signature.c
+--- a/godot-mesa/src/microsoft/compiler/dxil_signature.c
++++ b/godot-mesa/src/microsoft/compiler/dxil_signature.c
+@@ -647,6 +647,20 @@
+ 
+       if (s->info.stage == MESA_SHADER_FRAGMENT) {
+          get_semantic_ps_outname(var, &semantic);
++         /* A shader that declares which way it moves the depth it writes
++          * (SPIR-V DepthGreater/DepthLess, GLSL layout(depth_greater/
++          * depth_less)) keeps the early depth test: D3D12 learns it from the
++          * conservative depth outputs. As plain SV_Depth the driver runs the
++          * whole pixel shader before every depth test. */
++         if (var->data.location == FRAG_RESULT_DEPTH) {
++            if (s->info.fs.depth_layout == FRAG_DEPTH_LAYOUT_GREATER) {
++               snprintf(semantic.name, 64, "%s", "SV_DepthGreaterEqual");
++               semantic.kind = DXIL_SEM_DEPTH_GE;
++            } else if (s->info.fs.depth_layout == FRAG_DEPTH_LAYOUT_LESS) {
++               snprintf(semantic.name, 64, "%s", "SV_DepthLessEqual");
++               semantic.kind = DXIL_SEM_DEPTH_LE;
++            }
++         }
+          mod->outputs[num_outputs].sysvalue = "TARGET";
+       } else {
+          const struct glsl_type *type = var->type;
